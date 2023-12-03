@@ -1,7 +1,12 @@
 const express = require('express')
+const morgan = require('morgan')
 const app = express()
 
 app.use(express.json())
+
+morgan.token('postData', (req) => JSON.stringify(req.body)); 
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :postData'));
+
 
 let persons = [
     {
@@ -87,7 +92,7 @@ app.get('/api/persons/:id', (request, response) => {
       if (!body || !body.name && !number || !body.number ) {
         throw new Error('Name or number missing');
       }
-      
+
       if (persons.some(person => person.name === body.name)) {
         throw new Error('Name must be unique');
       }
@@ -117,7 +122,6 @@ app.get('/api/persons/:id', (request, response) => {
 
     response.status(204).end()
 })
-
 
 const PORT = 3001
 app.listen(PORT)

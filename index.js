@@ -1,6 +1,8 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
+const Person = require('./Models/person')
 
 const app = express()
 
@@ -63,71 +65,65 @@ let persons = [
   </html>
 `;
 
-app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
-  
-    if (person) {
-      response.json(person)
-    } else {
-      response.status(404).end()
-    }
-  
-  })
+app.get('/api/persons/:id', (request, response, next) => {
+    Person.findById(req.params.id)
+      .then(person => {
+        if (person){
+          response.json(person.toJSON())
+        } else {
+          response.status(404).end()
+        }
+      })
+      .catch(error => next(error))
+})
 
   app.get('/', (req, res) => {
     res.send('<h1>Phonebook</h1>')
   })
   
   app.get('/api/persons', (req, res) => {
-    res.json(persons)
-  })
+    Person.find({}).then(persons => {
+        res.json(persons.map(person => person.toJSON(), personAmount = persons.length))
+
+    })
+})
 
   app.get('/api/info', (req, res) => {
     res.send(pageContent)
   })
 
-  app.post('/api/persons', (req, res) => {
-    try {
-      console.log('Request body:', req.body);
-  
-      const body = req.body;
-  
-      if (!body || !body.name && !number || !body.number ) {
-        throw new Error('Name or number missing');
-      }
+  app.post('/api/persons', (req, res, next) => {
+    const body = req.body
 
-      if (persons.some(person => person.name === body.name)) {
-        throw new Error('Name must be unique');
-      }
-  
-      console.log('Creating person:', body);
-  
-      const person = {
-        id: generateID(),
+    if (!body.name || !body.number) {
+        return res.status(400).json({
+            error: 'content missing'
+        })
+    }
+
+    const person = new Person({
         name: body.name,
         number: body.number,
-      }
-  
-      persons = persons.concat(person);
-  
-      console.log('Person added:', person);
-  
-      res.json(person);
-    } catch (error) {
-      console.error('Error:', error.message);
-      res.status(500).json({ error: error.message })
-    }
-  })
+    })
 
-  app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id !== id)
+    console.log(person)
 
-    response.status(204).end()
+    person.save().then(savedPerson => {
+        res.json(savedPerson.toJSON())
+    })
+        .catch(error => next(error))
 })
 
-const PORT = process.env.PORT || 3001
+
+app.delete('/api/persons/:id', (req, res, next) => {
+  Person.findByIdAndRemove(req.params.id)
+      .then(result => {
+          res.status(204).end()
+      })
+      .catch(error => next(error))
+})
+
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
